@@ -9,29 +9,28 @@ interface TeamViewProps {
     onAddEmployee: (employee: Omit<Employee, 'id' | 'avatar'>) => void;
     onUpdateEmployee: (employee: Employee) => void;
     onDeleteEmployee: (employeeId: string) => void;
-    currentUser: { name: string; email: string; area: string; isAdmin: boolean; };
+    currentUser: { name: string; email: string; department: string; isAdmin: boolean; };
 }
 
 const EmployeeForm: React.FC<{ 
     employee?: Employee | null;
-    onSubmit: (employeeData: any) => void;
+    onSubmit: (employeeData: Omit<Employee, 'id' | 'avatar'>) => void;
     onCancel: () => void;
-    currentUser: { name: string; email: string; area: string; isAdmin: boolean; };
+    currentUser: { name: string; email: string; department: string; isAdmin: boolean; };
 }> = ({ employee, onSubmit, onCancel, currentUser }) => {
     const isEditing = !!employee;
     const isManagerOnly = !currentUser.isAdmin;
 
     const [name, setName] = useState(employee?.name || '');
+    const [email, setEmail] = useState(employee?.email || '');
     const [position, setPosition] = useState(employee?.position || '');
-    const [department, setDepartment] = useState(employee?.department || currentUser.area);
+    const [department, setDepartment] = useState(employee?.department || currentUser.department);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSubmit({ name, position, department });
+        onSubmit({ name, email, position, department });
     };
-
-    // Department is read-only for non-admins, OR for admins when they are ADDING a new employee (from TeamView).
-    // Admins can only change department when editing an existing employee.
+    
     const isDepartmentReadOnly = isManagerOnly || !isEditing;
 
     return (
@@ -39,6 +38,10 @@ const EmployeeForm: React.FC<{
             <div>
                 <label className="block text-sm font-medium text-slate-700">Nombre Completo</label>
                 <input type="text" value={name} onChange={e => setName(e.target.value)} required className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+            </div>
+             <div>
+                <label className="block text-sm font-medium text-slate-700">Email</label>
+                <input type="email" value={email} onChange={e => setEmail(e.target.value)} required className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
             </div>
             <div>
                 <label className="block text-sm font-medium text-slate-700">Puesto</label>
@@ -78,7 +81,7 @@ const TeamView: React.FC<TeamViewProps> = ({ employees, onAddEmployee, onUpdateE
         setIsModalOpen(true);
     };
 
-    const handleFormSubmit = (employeeData: any) => {
+    const handleFormSubmit = (employeeData: Omit<Employee, 'id' | 'avatar'>) => {
         if (editingEmployee) {
             onUpdateEmployee({ ...editingEmployee, ...employeeData });
         } else {

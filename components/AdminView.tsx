@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Employee, Evaluation, EvaluationCategory, EvaluationScores } from '../types';
 import Card from './ui/Card';
@@ -21,6 +20,7 @@ type CombinedEvaluationData = Evaluation & {
 
 const getAverageScore = (scores: EvaluationScores) => {
   const scoreValues = Object.values(scores);
+  if (scoreValues.length === 0) return 0;
   return parseFloat((scoreValues.reduce((a, b) => a + b, 0) / scoreValues.length).toFixed(1));
 };
 
@@ -111,10 +111,10 @@ const AdminView: React.FC<AdminViewProps> = ({ employees, evaluations }) => {
     }, [combinedData, selectedEvaluator, selectedDepartment, searchTerm]);
 
     const companyAverage = useMemo(() => {
-        if (evaluations.length === 0) return 0;
+        if (combinedData.length === 0) return "0.0";
         const totalScore = combinedData.reduce((sum, ev) => sum + ev.avgScore, 0);
         return (totalScore / combinedData.length).toFixed(1);
-    }, [combinedData, evaluations.length]);
+    }, [combinedData]);
 
     const StatCard: React.FC<{icon: React.ElementType, title: string, value: string | number}> = ({icon: Icon, title, value}) => (
         <Card>
@@ -137,7 +137,7 @@ const AdminView: React.FC<AdminViewProps> = ({ employees, evaluations }) => {
                 <StatCard icon={Users} title="Total Colaboradores" value={employees.length} />
                 <StatCard icon={FileText} title="Total Evaluaciones" value={evaluations.length} />
                 <StatCard icon={BarChart} title="Promedio General" value={`${companyAverage} / 5.0`} />
-                <StatCard icon={UserCheck} title="Total Evaluadores" value={evaluators.length - 1} />
+                <StatCard icon={UserCheck} title="Total Evaluadores" value={evaluators.length > 1 ? evaluators.length -1 : 0} />
             </div>
 
             <Card>

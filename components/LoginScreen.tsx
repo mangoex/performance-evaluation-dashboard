@@ -3,20 +3,20 @@ import Button from './ui/Button';
 import Card from './ui/Card';
 
 interface LoginScreenProps {
-  onLogin: (name: string, email: string, area: string, isAdmin: boolean) => void;
+  onLogin: (name: string, email: string, department: string, isAdmin: boolean) => void;
 }
 
 const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
   const [name, setName] = useState('John Doe');
   const [email, setEmail] = useState('john.doe@example.com');
-  const [area, setArea] = useState('Ingeniería');
+  const [department, setDepartment] = useState('Ingeniería');
   const [isAdmin, setIsAdmin] = useState(false);
   const [error, setError] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (name && email && area) {
-      onLogin(name, email, area, isAdmin);
+    if (name && email && department) {
+      onLogin(name, email, department, isAdmin);
     } else {
       setError('Todos los campos son obligatorios.');
     }
@@ -53,12 +53,12 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
             />
           </div>
           <div>
-            <label htmlFor="area" className="block text-sm font-medium text-slate-700">Área / Departamento</label>
+            <label htmlFor="department" className="block text-sm font-medium text-slate-700">Área / Departamento</label>
             <input
-              id="area"
+              id="department"
               type="text"
-              value={area}
-              onChange={(e) => setArea(e.target.value)}
+              value={department}
+              onChange={(e) => setDepartment(e.target.value)}
               className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
               placeholder="Ej: Ingeniería"
             />
