@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { INITIAL_EMPLOYEES, INITIAL_EVALUATIONS } from './constants';
 import { Employee, Evaluation, View } from './types';
 import LoginScreen from './components/LoginScreen';
@@ -13,8 +13,34 @@ const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<{ name: string; email: string; area: string; isAdmin: boolean; } | null>(null);
   const [view, setView] = useState<View>('dashboard');
-  const [employees, setEmployees] = useState<Employee[]>(INITIAL_EMPLOYEES);
-  const [evaluations, setEvaluations] = useState<Evaluation[]>(INITIAL_EVALUATIONS);
+
+  const [employees, setEmployees] = useState<Employee[]>(() => {
+    try {
+      const saved = localStorage.getItem('employees');
+      return saved ? JSON.parse(saved) : INITIAL_EMPLOYEES;
+    } catch (e) {
+      console.error('Could not load employees from local storage', e);
+      return INITIAL_EMPLOYEES;
+    }
+  });
+  const [evaluations, setEvaluations] = useState<Evaluation[]>(() => {
+    try {
+      const saved = localStorage.getItem('evaluations');
+      return saved ? JSON.parse(saved) : INITIAL_EVALUATIONS;
+    } catch (e) {
+      console.error('Could not load evaluations from local storage', e);
+      return INITIAL_EVALUATIONS;
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('employees', JSON.stringify(employees));
+  }, [employees]);
+
+  useEffect(() => {
+    localStorage.setItem('evaluations', JSON.stringify(evaluations));
+  }, [evaluations]);
+
 
   const handleLogin = (name: string, email: string, area: string, isAdmin: boolean) => {
     setCurrentUser({ name, email, area, isAdmin });

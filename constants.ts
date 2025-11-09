@@ -1,4 +1,4 @@
-import { Employee, Evaluation, EvaluationCategory } from './types';
+import { Employee, Evaluation } from './types';
 
 export const INITIAL_EMPLOYEES: Employee[] = [];
 
