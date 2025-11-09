@@ -1,5 +1,5 @@
+
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { INITIAL_EMPLOYEES, INITIAL_EVALUATIONS } from './constants';
 import { Employee, Evaluation, View } from './types';
 import LoginScreen from './components/LoginScreen';
 import Sidebar from './components/Sidebar';
@@ -8,38 +8,43 @@ import DashboardView from './components/DashboardView';
 import TeamView from './components/TeamView';
 import EvaluationView from './components/EvaluationView';
 import AdminView from './components/AdminView';
+import { db } from './firebase';
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<{ name: string; email: string; area: string; isAdmin: boolean; } | null>(null);
   const [view, setView] = useState<View>('dashboard');
 
-  const [employees, setEmployees] = useState<Employee[]>(() => {
-    try {
-      const saved = localStorage.getItem('employees');
-      return saved ? JSON.parse(saved) : INITIAL_EMPLOYEES;
-    } catch (e) {
-      console.error('Could not load employees from local storage', e);
-      return INITIAL_EMPLOYEES;
-    }
-  });
-  const [evaluations, setEvaluations] = useState<Evaluation[]>(() => {
-    try {
-      const saved = localStorage.getItem('evaluations');
-      return saved ? JSON.parse(saved) : INITIAL_EVALUATIONS;
-    } catch (e) {
-      console.error('Could not load evaluations from local storage', e);
-      return INITIAL_EVALUATIONS;
-    }
-  });
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
+  const [loading, setLoading] = useState(true);
+
 
   useEffect(() => {
-    localStorage.setItem('employees', JSON.stringify(employees));
-  }, [employees]);
+    // Fetch initial data from Firebase
+    const employeesRef = db.ref('employees');
+    const evaluationsRef = db.ref('evaluations');
+    
+    const onEmployeesValueChange = employeesRef.on('value', (snapshot) => {
+        const data = snapshot.val();
+        setEmployees(data ? Object.values(data) : []);
+        setLoading(false);
+    }, (error) => {
+        console.error("Firebase read failed: " + error.message);
+        setLoading(false);
+    });
 
-  useEffect(() => {
-    localStorage.setItem('evaluations', JSON.stringify(evaluations));
-  }, [evaluations]);
+    const onEvaluationsValueChange = evaluationsRef.on('value', (snapshot) => {
+        const data = snapshot.val();
+        setEvaluations(data ? Object.values(data) : []);
+    });
+
+    // Detach listeners on unmount
+    return () => {
+        employeesRef.off('value', onEmployeesValueChange);
+        evaluationsRef.off('value', onEvaluationsValueChange);
+    };
+  }, []);
 
 
   const handleLogin = (name: string, email: string, area: string, isAdmin: boolean) => {
@@ -56,36 +61,43 @@ const App: React.FC = () => {
   };
 
   const addEmployee = useCallback((employee: Omit<Employee, 'id' | 'avatar'>) => {
-    setEmployees(prev => {
-        const newId = prev.length > 0 ? Math.max(...prev.map(e => e.id)) + 1 : 1;
-        const newEmployee: Employee = { 
-            ...employee, 
-            id: newId, 
-            avatar: `https://i.pravatar.cc/150?u=${newId}`
-        };
-        return [...prev, newEmployee];
-    });
+    const newIdRef = db.ref('employees').push();
+    const newId = newIdRef.key;
+    if (!newId) return;
+
+    const newEmployee: Employee = {
+        ...employee,
+        id: Number(new Date().getTime()), // Using timestamp for a simple unique ID
+        avatar: `https://i.pravatar.cc/150?u=${newId}`
+    };
+    db.ref(`employees/${newEmployee.id}`).set(newEmployee);
   }, []);
 
   const updateEmployee = useCallback((updatedEmployee: Employee) => {
-    setEmployees(prev => prev.map(emp => emp.id === updatedEmployee.id ? updatedEmployee : emp));
+    db.ref(`employees/${updatedEmployee.id}`).update(updatedEmployee);
   }, []);
 
   const deleteEmployee = useCallback((employeeId: number) => {
-    setEmployees(prev => prev.filter(emp => emp.id !== employeeId));
-    setEvaluations(prev => prev.filter(ev => ev.employeeId !== employeeId));
+    db.ref(`employees/${employeeId}`).remove();
+    // Also remove evaluations for that employee
+    db.ref('evaluations').orderByChild('employeeId').equalTo(employeeId).once('value', snapshot => {
+        snapshot.forEach(childSnapshot => {
+            childSnapshot.ref.remove();
+        });
+    });
   }, []);
 
   const addEvaluation = useCallback((evaluation: Omit<Evaluation, 'id' | 'date'>) => {
-    setEvaluations(prev => {
-        const newId = prev.length > 0 ? Math.max(...prev.map(e => e.id)) + 1 : 1;
-        const newEvaluation: Evaluation = {
-            ...evaluation,
-            id: newId,
-            date: new Date().toISOString().split('T')[0]
-        };
-        return [...prev, newEvaluation];
-    });
+    const newIdRef = db.ref('evaluations').push();
+    const newId = newIdRef.key;
+    if (!newId) return;
+
+    const newEvaluation: Evaluation = {
+        ...evaluation,
+        id: Number(new Date().getTime()),
+        date: new Date().toISOString().split('T')[0]
+    };
+    db.ref(`evaluations/${newEvaluation.id}`).set(newEvaluation);
   }, []);
   
   const visibleEmployees = useMemo(() => {
@@ -93,31 +105,44 @@ const App: React.FC = () => {
 
     const isManagerialView = view === 'dashboard' || view === 'team' || view === 'evaluate';
     
-    // An admin on managerial views sees their own team.
     if (currentUser.isAdmin && isManagerialView) {
         return employees.filter(employee => employee.department === currentUser.area);
     }
 
-    // A non-admin always sees their own team.
     if (!currentUser.isAdmin) {
         return employees.filter(employee => employee.department === currentUser.area);
     }
     
-    // An admin on the admin view sees everyone (though this view gets data directly).
     return employees;
   }, [employees, currentUser, view]);
 
   const visibleEvaluations = useMemo(() => {
     if (!currentUser) return [];
 
-    // Filter evaluations based on the already-correct visibleEmployees list.
     const visibleEmployeeIds = new Set(visibleEmployees.map(e => e.id));
     return evaluations.filter(evaluation => visibleEmployeeIds.has(evaluation.employeeId));
   }, [evaluations, visibleEmployees]);
 
+  if (loading && !isAuthenticated) {
+    // Don't show login until we have a db connection state
+     return <LoginScreen onLogin={handleLogin} />;
+  }
 
   if (!isAuthenticated) {
     return <LoginScreen onLogin={handleLogin} />;
+  }
+  
+  if (loading) {
+    return (
+        <div className="flex h-screen w-full items-center justify-center bg-slate-100">
+            <div className="flex items-center space-x-2">
+                <div className="w-4 h-4 rounded-full bg-blue-600 animate-pulse"></div>
+                <div className="w-4 h-4 rounded-full bg-blue-600 animate-pulse [animation-delay:0.2s]"></div>
+                <div className="w-4 h-4 rounded-full bg-blue-600 animate-pulse [animation-delay:0.4s]"></div>
+                <span className="text-slate-600">Conectando a la base de datos...</span>
+            </div>
+        </div>
+    );
   }
 
   const renderView = () => {
@@ -140,7 +165,6 @@ const App: React.FC = () => {
             currentUser={currentUser!}
         />;
       case 'admin':
-        // Admin view always gets the full, unfiltered lists
         return currentUser?.isAdmin 
             ? <AdminView employees={employees} evaluations={evaluations} />
             : <DashboardView employees={visibleEmployees} evaluations={visibleEvaluations} />;
