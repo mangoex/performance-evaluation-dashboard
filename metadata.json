@@ -1,0 +1,5 @@
+{
+  "name": "Dashboard de Evaluación de Desempeño",
+  "description": "Una aplicación web para que los gerentes realicen evaluaciones de desempeño de los empleados, sigan el progreso y visualicen el rendimiento del equipo a través de un dashboard interactivo.",
+  "requestFramePermissions": []
+}
