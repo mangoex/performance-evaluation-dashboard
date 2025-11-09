@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Employee, Evaluation, View } from './types';
 import LoginScreen from './components/LoginScreen';
@@ -8,44 +7,71 @@ import DashboardView from './components/DashboardView';
 import TeamView from './components/TeamView';
 import EvaluationView from './components/EvaluationView';
 import AdminView from './components/AdminView';
-import { db } from './firebase';
+
+// Mock initial data - replacing Firebase functionality
+const MOCK_EMPLOYEES: Employee[] = [
+  {
+    id: 1,
+    name: 'Juan Pérez',
+    email: 'juan.perez@company.com',
+    area: 'Engineering',
+    position: 'Senior Developer',
+    avatar: 'https://i.pravatar.cc/150?u=juan'
+  },
+  {
+    id: 2,
+    name: 'María García',
+    email: 'maria.garcia@company.com',
+    area: 'Product',
+    position: 'Product Manager',
+    avatar: 'https://i.pravatar.cc/150?u=maria'
+  },
+  {
+    id: 3,
+    name: 'Carlos López',
+    email: 'carlos.lopez@company.com',
+    area: 'Design',
+    position: 'UX Designer',
+    avatar: 'https://i.pravatar.cc/150?u=carlos'
+  },
+];
+
+const MOCK_EVALUATIONS: Evaluation[] = [
+  {
+    id: 1,
+    employeeId: 1,
+    evaluatorId: 2,
+    score: 4.5,
+    comments: 'Excellent technical skills',
+    date: '2024-01-15'
+  },
+  {
+    id: 2,
+    employeeId: 2,
+    evaluatorId: 1,
+    score: 4.2,
+    comments: 'Great leadership',
+    date: '2024-01-15'
+  },
+];
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [currentUser, setCurrentUser] = useState<{ name: string; email: string; area: string; isAdmin: boolean; } | null>(null);
+  const [currentUser, setCurrentUser] = useState<{ name: string; email: string; area: string; isAdmin: boolean } | null>(null);
   const [view, setView] = useState<View>('dashboard');
-
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
   const [loading, setLoading] = useState(true);
 
-
+  // Load mock data on component mount
   useEffect(() => {
-    // Fetch initial data from Firebase
-    const employeesRef = db.ref('employees');
-    const evaluationsRef = db.ref('evaluations');
-    
-    const onEmployeesValueChange = employeesRef.on('value', (snapshot) => {
-        const data = snapshot.val();
-        setEmployees(data ? Object.values(data) : []);
-        setLoading(false);
-    }, (error) => {
-        console.error("Firebase read failed: " + error.message);
-        setLoading(false);
-    });
-
-    const onEvaluationsValueChange = evaluationsRef.on('value', (snapshot) => {
-        const data = snapshot.val();
-        setEvaluations(data ? Object.values(data) : []);
-    });
-
-    // Detach listeners on unmount
-    return () => {
-        employeesRef.off('value', onEmployeesValueChange);
-        evaluationsRef.off('value', onEvaluationsValueChange);
-    };
+    // Simulate loading delay
+    setTimeout(() => {
+      setEmployees(MOCK_EMPLOYEES);
+      setEvaluations(MOCK_EVALUATIONS);
+      setLoading(false);
+    }, 500);
   }, []);
-
 
   const handleLogin = (name: string, email: string, area: string, isAdmin: boolean) => {
     setCurrentUser({ name, email, area, isAdmin });
@@ -61,125 +87,62 @@ const App: React.FC = () => {
   };
 
   const addEmployee = useCallback((employee: Omit<Employee, 'id' | 'avatar'>) => {
-    const newIdRef = db.ref('employees').push();
-    const newId = newIdRef.key;
-    if (!newId) return;
-
     const newEmployee: Employee = {
-        ...employee,
-        id: Number(new Date().getTime()), // Using timestamp for a simple unique ID
-        avatar: `https://i.pravatar.cc/150?u=${newId}`
+      ...employee,
+      id: Math.max(...employees.map(e => e.id), 0) + 1,
+      avatar: `https://i.pravatar.cc/150?u=${employee.email}`
     };
-    db.ref(`employees/${newEmployee.id}`).set(newEmployee);
-  }, []);
+    setEmployees([...employees, newEmployee]);
+  }, [employees]);
 
   const updateEmployee = useCallback((updatedEmployee: Employee) => {
-    db.ref(`employees/${updatedEmployee.id}`).update(updatedEmployee);
-  }, []);
+    setEmployees(employees.map(e => e.id === updatedEmployee.id ? updatedEmployee : e));
+  }, [employees]);
 
   const deleteEmployee = useCallback((employeeId: number) => {
-    db.ref(`employees/${employeeId}`).remove();
-    // Also remove evaluations for that employee
-    db.ref('evaluations').orderByChild('employeeId').equalTo(employeeId).once('value', snapshot => {
-        snapshot.forEach(childSnapshot => {
-            childSnapshot.ref.remove();
-        });
-    });
-  }, []);
+    setEmployees(employees.filter(e => e.id !== employeeId));
+  }, [employees]);
 
-  const addEvaluation = useCallback((evaluation: Omit<Evaluation, 'id' | 'date'>) => {
-    const newIdRef = db.ref('evaluations').push();
-    const newId = newIdRef.key;
-    if (!newId) return;
-
+  const addEvaluation = useCallback((evaluation: Omit<Evaluation, 'id'>) => {
     const newEvaluation: Evaluation = {
-        ...evaluation,
-        id: Number(new Date().getTime()),
-        date: new Date().toISOString().split('T')[0]
+      ...evaluation,
+      id: Math.max(...evaluations.map(e => e.id), 0) + 1
     };
-    db.ref(`evaluations/${newEvaluation.id}`).set(newEvaluation);
-  }, []);
-  
-  const visibleEmployees = useMemo(() => {
-    if (!currentUser) return [];
+    setEvaluations([...evaluations, newEvaluation]);
+  }, [evaluations]);
 
-    const isManagerialView = view === 'dashboard' || view === 'team' || view === 'evaluate';
-    
-    if (currentUser.isAdmin && isManagerialView) {
-        return employees.filter(employee => employee.department === currentUser.area);
+  const updateEvaluation = useCallback((updatedEvaluation: Evaluation) => {
+    setEvaluations(evaluations.map(e => e.id === updatedEvaluation.id ? updatedEvaluation : e));
+  }, [evaluations]);
+
+  const deleteEvaluation = useCallback((evaluationId: number) => {
+    setEvaluations(evaluations.filter(e => e.id !== evaluationId));
+  }, [evaluations]);
+
+  const currentView = useMemo(() => {
+    if (!isAuthenticated) {
+      return <LoginScreen onLogin={handleLogin} />;
     }
 
-    if (!currentUser.isAdmin) {
-        return employees.filter(employee => employee.department === currentUser.area);
-    }
-    
-    return employees;
-  }, [employees, currentUser, view]);
-
-  const visibleEvaluations = useMemo(() => {
-    if (!currentUser) return [];
-
-    const visibleEmployeeIds = new Set(visibleEmployees.map(e => e.id));
-    return evaluations.filter(evaluation => visibleEmployeeIds.has(evaluation.employeeId));
-  }, [evaluations, visibleEmployees]);
-
-  if (loading && !isAuthenticated) {
-    // Don't show login until we have a db connection state
-     return <LoginScreen onLogin={handleLogin} />;
-  }
-
-  if (!isAuthenticated) {
-    return <LoginScreen onLogin={handleLogin} />;
-  }
-  
-  if (loading) {
-    return (
-        <div className="flex h-screen w-full items-center justify-center bg-slate-100">
-            <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 rounded-full bg-blue-600 animate-pulse"></div>
-                <div className="w-4 h-4 rounded-full bg-blue-600 animate-pulse [animation-delay:0.2s]"></div>
-                <div className="w-4 h-4 rounded-full bg-blue-600 animate-pulse [animation-delay:0.4s]"></div>
-                <span className="text-slate-600">Conectando a la base de datos...</span>
-            </div>
-        </div>
-    );
-  }
-
-  const renderView = () => {
     switch (view) {
-      case 'dashboard':
-        return <DashboardView employees={visibleEmployees} evaluations={visibleEvaluations} />;
       case 'team':
-        return <TeamView 
-            employees={visibleEmployees} 
-            onAddEmployee={addEmployee} 
-            onUpdateEmployee={updateEmployee} 
-            onDeleteEmployee={deleteEmployee}
-            currentUser={currentUser!}
-        />;
-      case 'evaluate':
-        return <EvaluationView 
-            employees={visibleEmployees} 
-            evaluations={visibleEvaluations}
-            onAddEvaluation={addEvaluation}
-            currentUser={currentUser!}
-        />;
+        return <TeamView employees={employees} onUpdateEmployee={updateEmployee} onDeleteEmployee={deleteEmployee} />;
+      case 'evaluation':
+        return <EvaluationView employees={employees} evaluations={evaluations} currentUser={currentUser} onAddEvaluation={addEvaluation} onUpdateEvaluation={updateEvaluation} onDeleteEvaluation={deleteEvaluation} />;
       case 'admin':
-        return currentUser?.isAdmin 
-            ? <AdminView employees={employees} evaluations={evaluations} />
-            : <DashboardView employees={visibleEmployees} evaluations={visibleEvaluations} />;
+        return currentUser?.isAdmin ? <AdminView employees={employees} evaluations={evaluations} onAddEmployee={addEmployee} onUpdateEmployee={updateEmployee} onDeleteEmployee={deleteEmployee} /> : <DashboardView employees={employees} evaluations={evaluations} currentUser={currentUser} />;
       default:
-        return <DashboardView employees={visibleEmployees} evaluations={visibleEvaluations} />;
+        return <DashboardView employees={employees} evaluations={evaluations} currentUser={currentUser} />;
     }
-  };
+  }, [view, isAuthenticated, employees, evaluations, currentUser, addEmployee, updateEmployee, deleteEmployee, addEvaluation, updateEvaluation, deleteEvaluation]);
 
   return (
-    <div className="flex h-screen bg-slate-100 font-sans">
-      <Sidebar currentView={view} setView={setView} isAdmin={currentUser!.isAdmin} />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header user={currentUser!} onLogout={handleLogout} />
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-100 p-4 sm:p-6 lg:p-8">
-          {renderView()}
+    <div className="flex h-screen bg-gray-50">
+      {isAuthenticated && <Sidebar view={view} onViewChange={setView} currentUser={currentUser} onLogout={handleLogout} />}
+      <div className="flex-1 flex flex-col">
+        {isAuthenticated && <Header currentUser={currentUser} />}
+        <main className="flex-1 overflow-auto">
+          {loading ? <div className="flex items-center justify-center h-full"><p>Loading...</p></div> : currentView}
         </main>
       </div>
     </div>
