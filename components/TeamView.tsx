@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Employee } from '../types';
 import Button from './ui/Button';
@@ -9,7 +8,7 @@ interface TeamViewProps {
     employees: Employee[];
     onAddEmployee: (employee: Omit<Employee, 'id' | 'avatar'>) => void;
     onUpdateEmployee: (employee: Employee) => void;
-    onDeleteEmployee: (employeeId: number) => void;
+    onDeleteEmployee: (employeeId: string) => void;
     currentUser: { name: string; email: string; area: string; isAdmin: boolean; };
 }
 

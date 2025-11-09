@@ -1,4 +1,3 @@
-
 export enum EvaluationCategory {
   PRODUCTIVIDAD = 'Productividad',
   CALIDAD = 'Calidad del Trabajo',
@@ -8,7 +7,7 @@ export enum EvaluationCategory {
 }
 
 export interface Employee {
-  id: number;
+  id: string;
   name: string;
   position: string;
   department: string;
@@ -20,8 +19,8 @@ export type EvaluationScores = {
 };
 
 export interface Evaluation {
-  id: number;
-  employeeId: number;
+  id: string;
+  employeeId: string;
   period: string; // e.g., "T3 2024"
   scores: EvaluationScores;
   comments: string;
