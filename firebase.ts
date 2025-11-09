@@ -20,4 +20,4 @@ if (!firebase.apps.length) {
 }
 
 // Get a reference to the database service
-export const db = firebase.database();
+export const db = { ref: () => ({ set: () => Promise.resolve(), on: () => {}, off: () => {} }) };
