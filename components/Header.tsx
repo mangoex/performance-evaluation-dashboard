@@ -1,5 +1,7 @@
+
 import React from 'react';
 import Button from './ui/Button';
+import { isSupabaseConnected } from '../database';
 
 interface HeaderProps {
   user: { name: string; email: string; department: string } | null;
@@ -12,6 +14,10 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout }) => {
     return null;
   }
 
+  const connectionStatus = isSupabaseConnected 
+    ? { color: 'bg-green-500', text: 'Conectado' }
+    : { color: 'bg-yellow-500', text: 'Modo Offline' };
+
   return (
     <header className="bg-white shadow-sm p-4 flex justify-between items-center border-b">
       <div className="flex items-center gap-4">
@@ -21,6 +27,10 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout }) => {
         </div>
       </div>
       <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 mr-4">
+            <div className={`w-2.5 h-2.5 rounded-full ${connectionStatus.color}`}></div>
+            <span className="text-xs text-slate-500 font-medium">{connectionStatus.text}</span>
+        </div>
         <div className="text-right hidden sm:block">
           <p className="font-medium text-slate-700">{user.name}</p>
           <p className="text-xs text-slate-500">{user.email}</p>

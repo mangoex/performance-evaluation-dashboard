@@ -18,7 +18,8 @@ const DashboardView: React.FC<DashboardViewProps> = ({ employees, evaluations, c
     const avgScore = totalEvaluations > 0
       ? (evaluations.reduce((sum, ev) => {
           const scores = Object.values(ev.scores);
-          const avg = scores.reduce((s, c) => s + c, 0) / scores.length;
+          // FIX: Explicitly type the parameters of the reduce function to `number` to avoid a TypeScript error on the arithmetic operation.
+          const avg = scores.reduce((s: number, c: number) => s + c, 0) / scores.length;
           return sum + avg;
         }, 0) / totalEvaluations).toFixed(2)
       : '0.00';
