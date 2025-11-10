@@ -1,15 +1,18 @@
 import React, { useMemo } from 'react';
-import { Employee, Evaluation } from '../types';
+import { Employee, Evaluation, View } from '../types';
 import Card from './ui/Card';
+import Button from './ui/Button';
+import { PlusCircle } from 'lucide-react';
 import { BarChart, PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface DashboardViewProps {
   employees: Employee[];
   evaluations: Evaluation[];
   currentUser: { name: string; email: string; department: string } | null;
+  setView: (view: View) => void;
 }
 
-const DashboardView: React.FC<DashboardViewProps> = ({ employees, evaluations, currentUser }) => {
+const DashboardView: React.FC<DashboardViewProps> = ({ employees, evaluations, currentUser, setView }) => {
   const stats = useMemo(() => {
     if (!evaluations || !employees) return { totalEmployees: 0, totalEvaluations: 0, avgScore: 'N/A' };
     
@@ -18,9 +21,9 @@ const DashboardView: React.FC<DashboardViewProps> = ({ employees, evaluations, c
     const avgScore = totalEvaluations > 0
       ? (evaluations.reduce((sum: number, ev) => {
           const scores = Object.values(ev.scores);
-          // FIX: Coerce score values to numbers before reducing to prevent type errors with arithmetic operations.
-          // Data from Firestore might contain numeric strings, which would cause `+` to act as string concatenation.
-          const avg = scores.length > 0 ? scores.reduce((s: number, c: any) => s + (Number(c) || 0), 0) / scores.length : 0;
+          // FIX: Coerce each score to a number to handle potential string values from Firestore.
+          // The accumulator type is correctly inferred from the initial value of the reduction.
+          const avg = scores.length > 0 ? scores.reduce((s, c) => s + (Number(c) || 0), 0) / scores.length : 0;
           return sum + avg;
         }, 0) / totalEvaluations).toFixed(2)
       : '0.00';
@@ -60,7 +63,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ employees, evaluations, c
         </Card>
       </div>
 
-      {employees && employees.length > 0 && (
+      {employees.length > 0 ? (
         <Card>
           <h2 className="text-xl font-semibold mb-4 text-slate-800">Empleados Recientes</h2>
           <div className="space-y-3">
@@ -77,6 +80,15 @@ const DashboardView: React.FC<DashboardViewProps> = ({ employees, evaluations, c
               </div>
             ))}
           </div>
+        </Card>
+      ) : (
+        <Card className="text-center py-12">
+          <h2 className="text-2xl font-bold text-slate-800 mb-2">¡Es hora de construir tu equipo!</h2>
+          <p className="text-slate-600 max-w-md mx-auto mb-6">Añade tu primer colaborador para empezar a gestionar el desempeño y realizar evaluaciones.</p>
+          <Button onClick={() => setView('team')}>
+            <PlusCircle className="h-5 w-5 mr-2" />
+            Añadir Colaborador
+          </Button>
         </Card>
       )}
     </div>
