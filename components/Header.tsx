@@ -1,7 +1,7 @@
 
 import React from 'react';
 import Button from './ui/Button';
-import { isSupabaseConnected } from '../database';
+import { isConnected } from '../database';
 
 interface HeaderProps {
   user: { name: string; email: string; department: string } | null;
@@ -14,9 +14,9 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout }) => {
     return null;
   }
 
-  const connectionStatus = isSupabaseConnected 
+  const connectionStatus = isConnected 
     ? { color: 'bg-green-500', text: 'Conectado' }
-    : { color: 'bg-yellow-500', text: 'Modo Offline' };
+    : { color: 'bg-red-500', text: 'Desconectado' };
 
   return (
     <header className="bg-white shadow-sm p-4 flex justify-between items-center border-b">
