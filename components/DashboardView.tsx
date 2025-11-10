@@ -16,10 +16,11 @@ const DashboardView: React.FC<DashboardViewProps> = ({ employees, evaluations, c
     const totalEmployees = employees.length;
     const totalEvaluations = evaluations.length;
     const avgScore = totalEvaluations > 0
-      ? (evaluations.reduce((sum, ev) => {
+      ? (evaluations.reduce((sum: number, ev) => {
           const scores = Object.values(ev.scores);
-          // FIX: Explicitly type the parameters of the reduce function to `number` to avoid a TypeScript error on the arithmetic operation.
-          const avg = scores.reduce((s: number, c: number) => s + c, 0) / scores.length;
+          // FIX: Coerce score values to numbers before reducing to prevent type errors with arithmetic operations.
+          // Data from Firestore might contain numeric strings, which would cause `+` to act as string concatenation.
+          const avg = scores.length > 0 ? scores.reduce((s: number, c: any) => s + (Number(c) || 0), 0) / scores.length : 0;
           return sum + avg;
         }, 0) / totalEvaluations).toFixed(2)
       : '0.00';

@@ -1,84 +1,82 @@
 import { Employee, Evaluation } from './types';
+import { initializeApp } from 'firebase/app';
+import { 
+    getFirestore, 
+    collection, 
+    getDocs, 
+    addDoc, 
+    doc, 
+    updateDoc, 
+    deleteDoc, 
+    query, 
+    where, 
+    writeBatch,
+    serverTimestamp // Opcional para timestamps precisos
+} from 'firebase/firestore';
+import { firebaseConfig } from './firebaseConfig';
 
-// --- Configuración de localStorage ---
-const EMPLOYEES_KEY = 'performance_app_employees';
-const EVALUATIONS_KEY = 'performance_app_evaluations';
+// --- Inicialización de Firebase ---
+const firebaseApp = initializeApp(firebaseConfig);
+const db = getFirestore(firebaseApp);
 
-// --- Funciones de Utilidad ---
-const read = <T>(key: string, defaultValue: T[] = []): T[] => {
-  try {
-    const data = localStorage.getItem(key);
-    return data ? JSON.parse(data) : defaultValue;
-  } catch (error) {
-    console.error(`Error al leer de localStorage [${key}]:`, error);
-    return defaultValue;
-  }
-};
+// --- Referencias a Colecciones ---
+export const employeesCollection = collection(db, 'employees');
+export const evaluationsCollection = collection(db, 'evaluations');
 
-const write = <T>(key: string, data: T[]): void => {
-  try {
-    localStorage.setItem(key, JSON.stringify(data, null, 2));
-  } catch (error)
- {
-    console.error(`Error al escribir en localStorage [${key}]:`, error);
-  }
-};
-
-// --- API del Servicio de Base de Datos (localStorage) ---
+// --- API del Servicio de Base de Datos (Firestore) ---
 
 export const getEmployees = async (): Promise<Employee[]> => {
-  return Promise.resolve(read<Employee>(EMPLOYEES_KEY));
+  const snapshot = await getDocs(employeesCollection);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Employee));
 };
 
 export const getEvaluations = async (): Promise<Evaluation[]> => {
-  return Promise.resolve(read<Evaluation>(EVALUATIONS_KEY));
+  const snapshot = await getDocs(evaluationsCollection);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Evaluation));
 };
 
 export const addEmployee = async (employeeData: Omit<Employee, 'id' | 'avatar'>): Promise<void> => {
-  const employees = await getEmployees();
-  const newEmployee: Employee = {
+  const newEmployeeData = {
     ...employeeData,
-    id: self.crypto.randomUUID(),
     avatar: `https://i.pravatar.cc/150?u=${employeeData.email}`
   };
-  employees.push(newEmployee);
-  write(EMPLOYEES_KEY, employees);
-  return Promise.resolve();
+  await addDoc(employeesCollection, newEmployeeData);
 };
 
 export const updateEmployee = async (updatedEmployee: Employee): Promise<void> => {
-  let employees = await getEmployees();
-  employees = employees.map(emp => emp.id === updatedEmployee.id ? updatedEmployee : emp);
-  write(EMPLOYEES_KEY, employees);
-  return Promise.resolve();
+  const { id, ...employeeData } = updatedEmployee;
+  const employeeDoc = doc(db, 'employees', id);
+  await updateDoc(employeeDoc, employeeData);
 };
 
 export const deleteEmployee = async (employeeId: string): Promise<void> => {
-  let employees = await getEmployees();
-  employees = employees.filter(emp => emp.id !== employeeId);
-  write(EMPLOYEES_KEY, employees);
+  const batch = writeBatch(db);
 
-  // También eliminar las evaluaciones asociadas
-  let evaluations = await getEvaluations();
-  evaluations = evaluations.filter(ev => ev.employeeId !== employeeId);
-  write(EVALUATIONS_KEY, evaluations);
-  
-  return Promise.resolve();
+  // 1. Referencia al documento del empleado a eliminar
+  const employeeDoc = doc(db, 'employees', employeeId);
+  batch.delete(employeeDoc);
+
+  // 2. Encontrar y eliminar todas las evaluaciones asociadas
+  const q = query(evaluationsCollection, where("employeeId", "==", employeeId));
+  const evaluationsSnapshot = await getDocs(q);
+  evaluationsSnapshot.forEach(doc => {
+    batch.delete(doc.ref);
+  });
+
+  // 3. Ejecutar el lote de operaciones
+  await batch.commit();
 };
 
 export const addEvaluation = async (evaluationData: Omit<Evaluation, 'id' | 'date'>): Promise<void> => {
-  const evaluations = await getEvaluations();
-  const newEvaluation: Evaluation = {
+  const newEvaluationData = {
     ...evaluationData,
-    id: self.crypto.randomUUID(),
-    date: new Date().toISOString(),
+    date: new Date().toISOString(), // O usar serverTimestamp() para mayor precisión
   };
-  evaluations.push(newEvaluation);
-  write(EVALUATIONS_KEY, evaluations);
-  return Promise.resolve();
+  await addDoc(evaluationsCollection, newEvaluationData);
 };
 
-
 // --- Estado de la Conexión ---
-// Como la base de datos es local, siempre estamos "conectados".
-export const isConnected = true;
+// Con Firestore, el SDK maneja la conexión y el modo sin conexión automáticamente.
+// Esta variable ya no es necesaria de la misma manera.
+// Podríamos implementar una escucha del estado de la conexión si fuera necesario.
+export const isConnected = true; // Placeholder, el SDK de Firebase gestiona esto.

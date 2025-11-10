@@ -9,6 +9,8 @@ import TeamView from './components/TeamView';
 import EvaluationView from './components/EvaluationView';
 import AdminView from './components/AdminView';
 import * as db from './database';
+import { onSnapshot, Unsubscribe } from 'firebase/firestore';
+
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -18,27 +20,42 @@ const App: React.FC = () => {
   const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    const [employeesData, evaluationsData] = await Promise.all([
-      db.getEmployees(),
-      db.getEvaluations()
-    ]);
-    setEmployees(employeesData);
-    setEvaluations(evaluationsData);
-    setLoading(false);
-  }, []);
-
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchData();
-    } else {
-      // Limpiar estado al cerrar sesión
-      setEmployees([]);
-      setEvaluations([]);
-      setLoading(false);
+    if (!isAuthenticated) {
+        setEmployees([]);
+        setEvaluations([]);
+        setLoading(false);
+        return;
     }
-  }, [isAuthenticated, fetchData]);
+
+    setLoading(true);
+
+    const unsubscribeEmployees: Unsubscribe = onSnapshot(db.employeesCollection, (snapshot) => {
+        const employeesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Employee));
+        setEmployees(employeesData);
+        setLoading(false);
+    }, (error) => {
+        console.error("Error al obtener empleados:", error);
+        setLoading(false);
+    });
+    
+    const unsubscribeEvaluations: Unsubscribe = onSnapshot(db.evaluationsCollection, (snapshot) => {
+        const evaluationsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Evaluation));
+        setEvaluations(evaluationsData);
+        setLoading(false);
+    }, (error) => {
+        console.error("Error al obtener evaluaciones:", error);
+        setLoading(false);
+    });
+
+
+    // Función de limpieza para cancelar las suscripciones al desmontar el componente o al cerrar sesión
+    return () => {
+        unsubscribeEmployees();
+        unsubscribeEvaluations();
+    };
+}, [isAuthenticated]);
+
 
   const handleLogin = (name: string, email: string, department: string, isAdmin: boolean) => {
     setCurrentUser({ name, email, department, isAdmin });
@@ -55,23 +72,19 @@ const App: React.FC = () => {
 
   const addEmployee = useCallback(async (employee: Omit<Employee, 'id' | 'avatar'>) => {
     await db.addEmployee(employee);
-    fetchData(); // Recargar datos para reflejar el cambio
-  }, [fetchData]);
+  }, []);
 
   const updateEmployee = useCallback(async (updatedEmployee: Employee) => {
     await db.updateEmployee(updatedEmployee);
-    fetchData();
-  }, [fetchData]);
+  }, []);
 
   const deleteEmployee = useCallback(async (employeeId: string) => {
     await db.deleteEmployee(employeeId);
-    fetchData();
-  }, [fetchData]);
+  }, []);
 
   const addEvaluation = useCallback(async (evaluation: Omit<Evaluation, 'id' | 'date'>) => {
     await db.addEvaluation(evaluation);
-    fetchData();
-  }, [fetchData]);
+  }, []);
 
   const currentView = useMemo(() => {
     switch (view) {
@@ -96,8 +109,8 @@ const App: React.FC = () => {
   }, [view, employees, evaluations, currentUser, addEmployee, updateEmployee, deleteEmployee, addEvaluation]);
 
   const renderContent = () => {
-    if (loading) {
-      return <div className="flex items-center justify-center h-full"><p>Cargando datos locales...</p></div>;
+    if (loading && isAuthenticated) {
+      return <div className="flex items-center justify-center h-full"><p>Conectando con la base de datos...</p></div>;
     }
     return currentView;
   };

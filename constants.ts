@@ -1,4 +1,3 @@
-
-// This file is no longer used for initial data, as data is now fetched from Firebase.
-// It can be removed or kept for other constants if needed.
+// Este archivo ya no se utiliza.
+// La lógica de la base de datos se ha migrado a Firebase en 'database.ts'.
 export {};
