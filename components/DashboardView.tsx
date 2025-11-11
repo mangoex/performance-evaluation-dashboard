@@ -21,8 +21,8 @@ const DashboardView: React.FC<DashboardViewProps> = ({ employees, evaluations, c
     const avgScore = totalEvaluations > 0
       ? (evaluations.reduce((sum: number, ev) => {
           const scores = Object.values(ev.scores);
-          // FIX: Coerce each score to a number to handle potential string values from Firestore.
-          // The accumulator type is correctly inferred from the initial value of the reduction.
+          // FIX: The value `c` from `scores` can be of type `unknown` if the data from Firestore is not a clean number.
+          // This causes a type error on `s + c`. Explicitly convert `c` to a number before the addition.
           const avg = scores.length > 0 ? scores.reduce((s, c) => s + (Number(c) || 0), 0) / scores.length : 0;
           return sum + avg;
         }, 0) / totalEvaluations).toFixed(2)

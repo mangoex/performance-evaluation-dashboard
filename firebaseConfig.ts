@@ -1,14 +1,20 @@
 // firebaseConfig.ts
-
-// NOTA: Estas credenciales deben ser reemplazadas por las de tu propio proyecto de Firebase.
-// Se recomienda encarecidamente utilizar variables de entorno para almacenar esta información sensible.
-// Por ejemplo, process.env.REACT_APP_FIREBASE_API_KEY
+// Configuración de Firebase para Firestore
+// CREDENCIALES DEL PROYECTO: Evaluaciones de desempeño
 
 export const firebaseConfig = {
-  apiKey: process.env.FIREBASE_API_KEY || "your-api-key",
-  authDomain: process.env.FIREBASE_AUTH_DOMAIN || "your-auth-domain",
-  projectId: process.env.FIREBASE_PROJECT_ID || "your-project-id",
-  storageBucket: process.env.FIREBASE_STORAGE_BUCKET || "your-storage-bucket",
-  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || "your-messaging-sender-id",
-  appId: process.env.FIREBASE_APP_ID || "your-app-id"
+  apiKey: "AIzaSyDYeQwQZ0nmtAMycpXJU6OBJBz4KFNbZy8",
+  authDomain: "evaluaciones-de-desempeno.firebaseapp.com",
+  projectId: "evaluaciones-de-desempeno",
+  storageBucket: "evaluaciones-de-desempeno.firebasestorage.app",
+  messagingSenderId: "151784928287",
+  appId: "1:151784928287:web:f6c98626d74902721f112a",
+  databaseURL: "https://evaluaciones-de-desempeno.firebaseio.com"
 };
+
+// Validación de configuración
+if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+  console.error("⚠️  Firebase Config Error: Faltan credenciales importantes.");
+}
+
+export default firebaseConfig;
